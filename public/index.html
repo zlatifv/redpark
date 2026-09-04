@@ -221,6 +221,9 @@ body.compact-ui .emote-btn{width:34px;height:34px;font-size:15px;border-radius:9
       <div class="wrist-item" onclick="visitJapan();closeWrist()">
         <span>🗾</span><span>Visit Japan</span>
       </div>
+      <div class="wrist-item" onclick="visitMansion();closeWrist()">
+        <span>🏡</span><span>Visit Mansion</span>
+      </div>
       <div class="wrist-item admin-only" id="fly-wrist-item" style="display:none" onclick="toggleFlyMode();closeWrist()">
         <span>🕊️</span><span id="fly-wrist-label">Fly Mode: Off</span>
       </div>
@@ -1459,6 +1462,7 @@ function buildPark() {
     [-70,-65,Math.PI,  0xe3f2fd, 0xb71c1c, 0x5d4037],
   ];
   houseData.forEach(function(h) { makeHouse(h[0],h[1],h[2],h[3],h[4],h[5]); });
+  try { makeMansion(mansionPos.x, mansionPos.z); } catch (e) { console.error('[Mansion] build failed:', e); }
 
   // ---- HANGOUT BUILDINGS (walk-in, no collision) ----
   makeArcade(-45, 15);
@@ -1888,6 +1892,82 @@ function makeBambooGrove(x, z) {
   }
 }
 
+var mansionPos = { x: 120, z: 110 };
+function makeMansion(x, z) {
+  var grp = new THREE.Group();
+  var darkMat = new THREE.MeshLambertMaterial({ color: 0x1c1f24 });
+  var concreteMat = new THREE.MeshLambertMaterial({ color: 0x8a8478 });
+  var glassMat = new THREE.MeshLambertMaterial({ color: 0x8fd3e8, transparent: true, opacity: 0.35 });
+
+  // Ground-floor concrete base, open-fronted so furniture is visible inside
+  var base = new THREE.Mesh(new THREE.BoxGeometry(16, 3.2, 10), concreteMat);
+  base.position.set(0, 1.6, -2); base.castShadow = true; grp.add(base);
+  // Back + side walls only (front stays open toward the pool)
+  var backWall = new THREE.Mesh(new THREE.BoxGeometry(16, 3.2, 0.3), darkMat);
+  backWall.position.set(0, 1.6, -6.9); grp.add(backWall);
+
+  // Upper dark-clad level, cantilevered forward like the reference
+  var upper = new THREE.Mesh(new THREE.BoxGeometry(15, 3.6, 9), darkMat);
+  upper.position.set(0, 5, -1.5); upper.castShadow = true; grp.add(upper);
+  // Glass window strip wrapping the upper level
+  var glassStrip = new THREE.Mesh(new THREE.BoxGeometry(15.2, 1.6, 9.2), glassMat);
+  glassStrip.position.set(0, 4.3, -1.5); grp.add(glassStrip);
+  // Rooftop terrace with railing
+  var roofSlab = new THREE.Mesh(new THREE.BoxGeometry(15.4, 0.3, 9.4), concreteMat);
+  roofSlab.position.set(0, 6.95, -1.5); grp.add(roofSlab);
+  var railMat = new THREE.MeshLambertMaterial({ color: 0x37474f });
+  [-7.5, 7.5].forEach(function(rx) {
+    var rail = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.9, 9.4), railMat);
+    rail.position.set(rx, 7.55, -1.5); grp.add(rail);
+  });
+
+  // Infinity pool out front
+  var pool = new THREE.Mesh(new THREE.BoxGeometry(13, 0.5, 6), new THREE.MeshLambertMaterial({ color: 0x0f3a52 }));
+  pool.position.set(0, 0.25, 6.5); grp.add(pool);
+  var poolWater = new THREE.Mesh(new THREE.PlaneGeometry(12.4, 5.4), new THREE.MeshBasicMaterial({ color: 0x2fa8d8, transparent: true, opacity: 0.85 }));
+  poolWater.rotation.x = -Math.PI / 2;
+  poolWater.position.set(0, 0.52, 6.5); grp.add(poolWater);
+  var poolDeck = new THREE.Mesh(new THREE.BoxGeometry(15, 0.15, 8.5), concreteMat);
+  poolDeck.position.set(0, 0.07, 6.5); grp.add(poolDeck);
+
+  // Poolside furniture: loungers, table, umbrella
+  [-4.5, -2.7].forEach(function(lx) {
+    var lounger = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.35, 2), new THREE.MeshLambertMaterial({ color: 0xe8e2d5 }));
+    lounger.position.set(lx, 0.32, 9.2); grp.add(lounger);
+    var backrest = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.15), new THREE.MeshLambertMaterial({ color: 0xe8e2d5 }));
+    backrest.position.set(lx, 0.55, 8.3); backrest.rotation.x = -0.4; grp.add(backrest);
+  });
+  var poolTable = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 12), new THREE.MeshLambertMaterial({ color: 0x3e2723 }));
+  poolTable.position.set(3.5, 0.55, 9); grp.add(poolTable);
+  var tableLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 8), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+  tableLeg.position.set(3.5, 0.3, 9); grp.add(tableLeg);
+  var umbrellaPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 8), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+  umbrellaPole.position.set(3.5, 1.3, 9); grp.add(umbrellaPole);
+  var umbrellaTop = new THREE.Mesh(new THREE.ConeGeometry(1.3, 0.5, 10), new THREE.MeshLambertMaterial({ color: 0xf5f5f0 }));
+  umbrellaTop.position.set(3.5, 2.3, 9); grp.add(umbrellaTop);
+
+  // Interior furniture, visible through the open front
+  var sofa = new THREE.Mesh(new THREE.BoxGeometry(4, 0.8, 1.4), new THREE.MeshLambertMaterial({ color: 0x4a4a52 }));
+  sofa.position.set(-3.5, 0.6, -3.5); grp.add(sofa);
+  var sofaBack = new THREE.Mesh(new THREE.BoxGeometry(4, 0.7, 0.3), new THREE.MeshLambertMaterial({ color: 0x4a4a52 }));
+  sofaBack.position.set(-3.5, 1.15, -4.1); grp.add(sofaBack);
+  var coffeeTable = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 0.8), new THREE.MeshLambertMaterial({ color: 0x2b1f14 }));
+  coffeeTable.position.set(-3.5, 0.3, -2.2); grp.add(coffeeTable);
+  var tvWall = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.1), new THREE.MeshLambertMaterial({ color: 0x0a0a0a }));
+  tvWall.position.set(4, 1.9, -6.7); grp.add(tvWall);
+  var diningTable = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.7, 1.1), new THREE.MeshLambertMaterial({ color: 0x2b1f14 }));
+  diningTable.position.set(4, 0.35, -3.5); grp.add(diningTable);
+  [-0.9, 0.9].forEach(function(cx) {
+    var chair = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.5), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+    chair.position.set(4 + cx, 0.35, -2.6); grp.add(chair);
+  });
+
+  grp.position.set(x, 0, z);
+  scene.add(grp);
+  // Collision only on the solid mass (back/upper), leaving the pool deck and open front walkable
+  treeMeshes.push({ x: x, z: z - 2, r: 6 });
+}
+
 function makeTeahouse(x, z) {
   var grp = new THREE.Group();
   var pillarMat = new THREE.MeshLambertMaterial({ color: 0x5d4037 });
@@ -2061,6 +2141,17 @@ function visitJapan() {
   }
   japanTeleportCooldown = 2;
   console.log('[Japan Zone] teleported — playerPos:', playerPos.x, playerPos.z, 'camera will follow next frame');
+}
+
+function visitMansion() {
+  var atMansion = Math.abs(playerPos.x - mansionPos.x) < 30 && Math.abs(playerPos.z - mansionPos.z) < 30;
+  if (atMansion) {
+    playerPos.x = 0; playerPos.z = 8;
+    showNotif('🏞️ Welcome back to the Park', '', 2000);
+  } else {
+    playerPos.x = mansionPos.x; playerPos.z = mansionPos.z + 14; // poolside, facing the house
+    showNotif('🏡 Welcome to the Mansion', '', 2000);
+  }
 }
 
 
